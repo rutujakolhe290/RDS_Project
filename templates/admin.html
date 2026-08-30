@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - RDS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-purple-800 to-indigo-900 text-white min-h-screen p-6">
+    <div class="max-w-6xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold">Admin Dashboard</h1>
+                <p id="adminInfo" class="opacity-80 text-sm">Checking login...</p>
+            </div>
+            <a href="/logout" class="bg-red-500 px-4 py-2 rounded-lg font-semibold hover:bg-red-600">Logout</a>
+        </div>
+
+        <div class="bg-red-900/30 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mb-6 border border-red-500/50">
+            <h2 class="text-2xl font-semibold mb-4 text-red-300">🚨 Suspicious Distribution Reports</h2>
+            <div id="suspiciousReports"></div>
+        </div>
+
+        <div class="bg-purple-900/30 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mb-6 border border-purple-500/50">
+            <h2 class="text-2xl font-semibold mb-4 text-purple-300">🕵️ Black Marketing Detection</h2>
+            <div id="blackMarketingAlerts"></div>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mb-6">
+            <h2 class="text-2xl font-semibold mb-4">📦 Current Stock of All Shops (Live)</h2>
+            <div id="allShopStock" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mb-6">
+            <h2 class="text-2xl font-semibold mb-4">➕ Add Stock to Shop</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block mb-2 font-semibold">Select Shop</label>
+                    <select id="shopSelect" class="w-full p-3 rounded-lg text-black"></select>
+                </div>
+                <div>
+                    <label class="block mb-2 font-semibold">Item</label>
+                    <select id="itemSelect" class="w-full p-3 rounded-lg text-black">
+                        <option value="wheat">Wheat</option>
+                        <option value="rice">Rice</option>
+                        <option value="sugar">Sugar</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block mb-2 font-semibold">Quantity in Kg</label>
+                    <input type="number" id="addQty" placeholder="Enter Kg" class="w-full p-3 rounded-lg text-black">
+                </div>
+            </div>
+            <button onclick="addStock()" class="w-full mt-4 p-3 bg-gradient-to-r from-green-400 to-teal-500 rounded-lg font-bold text-lg text-black hover:scale-105 transition">Add Stock</button>
+            <p id="msg" class="text-center mt-2 text-green-300 font-bold"></p>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mb-6">
+            <h2 class="text-2xl font-semibold mb-4">📝 Admin Stock Add Log</h2>
+            <div id="adminLogTable" class="overflow-x-auto"></div>
+        </div>
+
+        <div class="bg-yellow-900/30 backdrop-blur-lg rounded-2xl p-4 shadow-2xl mb-6 border border-yellow-500/50">
+            <h3 class="text-lg font-semibold mb-3 text-yellow-300">🔍 Search History (Shop + Date Wise)</h3>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <input type="text" id="searchInput" placeholder="Search Aadhar, Shop, Item..." class="p-3 rounded-lg text-black md:col-span-2" onkeyup="applyFilters()">
+                <select id="shopFilter" class="p-3 rounded-lg text-black" onchange="applyFilters()">
+                    <option value="">All Shops</option>
+                </select>
+                <input type="date" id="dateFilter" class="p-3 rounded-lg text-black" onchange="applyFilters()">
+                <button onclick="clearFilters()" class="bg-red-500 p-3 rounded-lg font-bold hover:bg-red-600">Clear</button>
+            </div>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mb-6">
+            <h2 class="text-2xl font-semibold mb-4">📊 Shopkeeper Distribution Reports</h2>
+            <div id="reportsTable" class="overflow-x-auto"></div>
+        </div>
+
+        <!-- ✅ UPDATED PART - YA MADHE SEARCH BAR ADD KELAY -->
+        <div class="bg-yellow-900/30 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mb-6 border border-yellow-500/50">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold text-yellow-300">🧾 Citizen Stock Receipts (Permanent)</h2>
+                <span id="receiptCount" class="bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-bold">0 Records</span>
+            </div>
+
+            <!-- NEW SEARCH BAR ADDED HERE -->
+            <div class="bg-black/20 p-4 rounded-xl mb-4 border border-yellow-500/30">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <input type="text" id="receiptSearch" placeholder="🔍 Aadhar / Shop..." class="p-3 rounded-lg text-black" onkeyup="applyReceiptFilter()">
+                    <select id="receiptShopFilter" class="p-3 rounded-lg text-black font-bold" onchange="applyReceiptFilter()">
+                        <option value="">All Shops</option>
+                        <option value="SHOP001">SHOP001</option>
+                        <option value="SHOP002">SHOP002</option>
+                        <option value="SHOP003">SHOP003</option>
+                    </select>
+                    <input type="date" id="receiptDateFilter" class="p-3 rounded-lg text-black border-2 border-yellow-400" onchange="applyReceiptFilter()">
+                    <button onclick="clearReceiptFilter()" class="bg-red-500 p-3 rounded-lg font-bold hover:bg-red-600">Clear</button>
+                </div>
+                <p class="text-xs mt-2 opacity-70"></p>
+            </div>
+
+            <div class="flex gap-2 mb-4 flex-wrap" id="shopButtons"></div>
+            <div id="citizenReceiptsTable" class="overflow-x-auto"></div>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl">
+            <h2 class="text-2xl font-semibold mb-4">📢 All Complaints</h2>
+            <div class="mb-4">
+                <button onclick="filterComplaints('All')" class="bg-blue-500 px-4 py-2 rounded mr-2">All</button>
+                <button onclick="filterComplaints('Pending')" class="bg-yellow-500 px-4 py-2 rounded mr-2">Pending</button>
+                <button onclick="filterComplaints('Resolved')" class="bg-green-500 px-4 py-2 rounded">Resolved</button>
+            </div>
+            <div id="allComplaints" class="space-y-3"></div>
+        </div>
+    </div>
+
+<div id="photoModal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-50 p-4 flex-col" onclick="closePhoto()">
+    <img id="modalImg" src="" class="max-w-full max-h-[85vh] rounded-xl shadow-2xl border-4 border-white">
+    <p class="text-white mt-4 text-sm">Click anywhere to close</p>
+</div>
+
+<script>
+let allComplaintsData = [];
+let allReportsData = [];
+let allCitizenReceipts = [];
+let allShopsList = [];
+
+window.onload = async function(){
+    try{
+        let res = await fetch('/api/my-data');
+        let data = await res.json();
+        if(!data.user || data.user.role!== 'admin'){
+            alert('⚠️ Access Denied! Please login as Admin');
+            window.location.href = '/';
+            return;
+        }
+        document.getElementById('adminInfo').innerText = `Logged in as ${data.user.name} | Aadhar: ${data.user.mobile}`;
+        await loadAllShopStock();
+        loadAdminLog();
+        loadReports();
+        loadCitizenReceipts();
+        loadSuspiciousReports();
+        loadBlackMarketingAlerts();
+        loadAllComplaints();
+
+        // AUTO REFRESH EVERY 3 SEC - NO RELOAD NEEDED
+        setInterval(() => {
+            loadReports();
+            loadCitizenReceiptsLive();
+            loadAllComplaints();
+            loadSuspiciousReports();
+            loadBlackMarketingAlerts();
+        }, 3000);
+    } catch(e){
+        window.location.href = '/';
+    }
+}
+
+function loadSuspiciousReports(){
+    let reports = JSON.parse(localStorage.getItem('distributionReports')) || [];
+    let suspicious = reports.filter(r => r.isSuspicious === true);
+    if(suspicious.length === 0){
+        document.getElementById('suspiciousReports').innerHTML = '<p class="opacity-70">No suspicious activity ✅</p>';
+        return;
+    }
+    let html = '';
+    suspicious.reverse().forEach(r => {
+        html += `<div class="bg-red-800/40 p-4 rounded-lg mb-3 border-l-4 border-red-500"><div class="flex justify-between"><div><p><b>${r.shop}</b> - ${r.item}</p><p class="text-sm opacity-80">By: ${r.byAadhar} | ${r.date}</p></div><span class="bg-red-600 px-3 py-1 rounded-full text-xs">FLAGGED</span></div><p class="mt-2">Submitted: <b class="text-red-300">${r.qty} Kg</b> | Available: <b>${r.availableAtTime} Kg</b></p><p class="text-red-300 font-semibold">⚠️ ${r.mismatchNote}</p></div>`;
+    });
+    document.getElementById('suspiciousReports').innerHTML = html;
+}
+
+function loadBlackMarketingAlerts(){
+    let distReports = JSON.parse(localStorage.getItem('distributionReports')) || [];
+    let receipts = JSON.parse(localStorage.getItem('citizenReceipts')) || [];
+    let html = ''; let found = false;
+    distReports.forEach(r => {
+        let date = r.date.split(',')[0];
+        let shopReceipts = receipts.filter(rec => rec.shop === r.shop && rec.date === date);
+        let citizenTotal = r.item === 'Wheat'? shopReceipts.reduce((s, rec) => s + rec.wheat, 0) : r.item === 'Rice'? shopReceipts.reduce((s, rec) => s + rec.rice, 0) : shopReceipts.reduce((s, rec) => s + rec.sugar, 0);
+        if(r.qty > citizenTotal && citizenTotal > 0){
+            found = true; let leak = r.qty - citizenTotal;
+            html += `<div class="bg-purple-800/40 p-4 rounded-lg mb-3 border-l-4 border-purple-500"><p><b>${r.shop}</b> - ${r.item}</p><p>Shop Reported: <b>${r.qty} Kg</b> | Citizen Confirmed: <b>${citizenTotal} Kg</b></p><p class="text-purple-300 font-bold">⚠️ Possible Leak: ${leak} Kg</p></div>`;
+        }
+    });
+    if(!found) html = '<p class="opacity-70">No Black Marketing detected ✅</p>';
+    document.getElementById('blackMarketingAlerts').innerHTML = html;
+}
+
+async function loadAllShopStock(){
+    let res = await fetch('/api/get-stock');
+    let shops = await res.json();
+    allShopsList = shops;
+    let html = ''; let options = ''; let shopFilterOptions = '<option value="">All Shops</option>';
+    let shopButtons = `<button onclick="filterByShop('')" class="bg-white text-black px-3 py-1 rounded-full text-sm font-bold">All Shops</button>`;
+    shops.forEach(shop => {
+        html += `<div class="bg-white/5 p-4 rounded-lg"><h3 class="font-bold text-lg mb-2">${shop.id} - ${shop.name || ''}</h3><p>🌾 Wheat: <b>${shop.wheat} Kg</b></p><p>🍚 Rice: <b>${shop.rice} Kg</b></p><p>🍬 Sugar: <b>${shop.sugar} Kg</b></p></div>`;
+        options += `<option value="${shop.id}">${shop.id} - ${shop.name}</option>`;
+        shopFilterOptions += `<option value="${shop.id}">${shop.id} - ${shop.name}</option>`;
+        shopButtons += `<button onclick="filterByShop('${shop.id}')" class="bg-yellow-500/20 border border-yellow-500 px-3 py-1 rounded-full text-sm">${shop.id}</button>`;
+    });
+    document.getElementById('allShopStock').innerHTML = html;
+    document.getElementById('shopSelect').innerHTML = options;
+    document.getElementById('shopFilter').innerHTML = shopFilterOptions;
+    document.getElementById('shopButtons').innerHTML = shopButtons;
+}
+
+async function addStock(){
+    const shopId = document.getElementById('shopSelect').value;
+    const item = document.getElementById('itemSelect').value;
+    const qty = parseInt(document.getElementById('addQty').value);
+    if(isNaN(qty) || qty <= 0){ alert('⚠️ Enter valid quantity'); return; }
+    let currentStocks = await (await fetch('/api/get-stock')).json();
+    let shop = currentStocks.find(s => s.id === shopId);
+    let payload = { shop_id: shopId, wheat: shop.wheat, rice: shop.rice, sugar: shop.sugar };
+    payload[item] = (payload[item] || 0) + qty;
+    let res = await fetch('/api/update-stock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    let d = await res.json();
+    if(d.success){
+        let adminLogs = JSON.parse(localStorage.getItem('adminStockLogs')) || [];
+        adminLogs.push({ date: new Date().toLocaleString(), isoDate: new Date().toISOString(), shop: shopId, item: item, qty: qty, byAadhar: 'ADMIN' });
+        localStorage.setItem('adminStockLogs', JSON.stringify(adminLogs));
+        document.getElementById('msg').innerText = `✅ ${qty} Kg ${item} added to ${shopId}!`;
+        document.getElementById('addQty').value = '';
+        loadAllShopStock(); loadAdminLog();
+    }
+}
+
+function loadAdminLog(){
+    let logs = JSON.parse(localStorage.getItem('adminStockLogs')) || [];
+    if(logs.length === 0){ document.getElementById('adminLogTable').innerHTML = '<p class="opacity-70">No stock added yet.</p>'; return; }
+    let html = `<table class="w-full text-left text-sm"><thead class="border-b"><tr><th class="p-3">Date</th><th class="p-3">Shop</th><th class="p-3">Item</th><th class="p-3">Qty</th><th class="p-3">By</th></tr></thead><tbody>`;
+    logs.slice().reverse().forEach(l => { html += `<tr class="border-b border-white/10"><td class="p-3">${l.date}</td><td class="p-3">${l.shop}</td><td class="p-3">${l.item}</td><td class="p-3"><b>+${l.qty}</b></td><td class="p-3">${l.byAadhar}</td></tr>`; });
+    html += `</tbody></table>`;
+    document.getElementById('adminLogTable').innerHTML = html;
+}
+
+function loadReports(){
+    allReportsData = JSON.parse(localStorage.getItem('distributionReports')) || [];
+    displayReports(allReportsData);
+}
+function displayReports(data){
+    if(data.length === 0){ document.getElementById('reportsTable').innerHTML = '<p class="opacity-70">No entries for this filter.</p>'; return; }
+    let html = `<table class="w-full text-left text-sm"><thead class="border-b"><tr><th class="p-3">Date</th><th class="p-3">Shop</th><th class="p-3">Item</th><th class="p-3">Qty</th><th class="p-3">Status</th><th class="p-3">By</th></tr></thead><tbody>`;
+    data.slice().reverse().forEach(r => {
+        let flag = r.isSuspicious? '<span class="bg-red-600 px-2 py-1 rounded text-xs">FLAGGED</span>' : '<span class="bg-green-600 px-2 py-1 rounded text-xs">OK</span>';
+        html += `<tr class="border-b border-white/10"><td class="p-3">${r.date}</td><td class="p-3">${r.shop}</td><td class="p-3">${r.item}</td><td class="p-3"><b>-${r.qty}</b></td><td class="p-3">${flag}</td><td class="p-3">${r.byAadhar || 'N/A'}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+    document.getElementById('reportsTable').innerHTML = html;
+}
+
+function loadCitizenReceipts(){
+    allCitizenReceipts = JSON.parse(localStorage.getItem('citizenReceipts')) || [];
+    displayReceipts(allCitizenReceipts);
+}
+function loadCitizenReceiptsLive(){
+    let receipts = JSON.parse(localStorage.getItem('citizenReceipts')) || [];
+    if(JSON.stringify(receipts)!== JSON.stringify(allCitizenReceipts)){
+        allCitizenReceipts = receipts;
+        if(document.getElementById('receiptSearch').value || document.getElementById('receiptShopFilter').value || document.getElementById('receiptDateFilter').value){
+            applyReceiptFilter();
+        } else {
+            displayReceipts(allCitizenReceipts);
+        }
+    }
+}
+function displayReceipts(data){
+    let container = document.getElementById('citizenReceiptsTable');
+    document.getElementById('receiptCount').innerText = `${data.length} / ${allCitizenReceipts.length} Records (Never Deletes)`;
+    if(data.length === 0){
+        container.innerHTML = '<p class="opacity-70">No records for this Date/Shop filter. Clear kara.</p>';
+        return;
+    }
+    let html = `<table class="w-full text-left text-sm"><thead class="border-b border-yellow-500/50"><tr><th class="p-3">Full Date</th><th class="p-3">Shop</th><th class="p-3">Aadhar</th><th class="p-3">Wheat</th><th class="p-3">Rice</th><th class="p-3">Sugar</th></tr></thead><tbody>`;
+    data.slice().reverse().forEach(r => {
+        let displayDate = r.fullDate || r.date;
+        html += `<tr class="border-b border-white/10"><td class="p-3">${displayDate}</td><td class="p-3"><b>${r.shop}</b></td><td class="p-3">${r.aadhar || r.byAadhar || 'N/A'}</td><td class="p-3">${r.wheat || 0} Kg</td><td class="p-3">${r.rice || 0} Kg</td><td class="p-3">${r.sugar || 0} Kg</td></tr>`;
+    });
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+}
+
+function loadAllComplaints(){
+    allComplaintsData = JSON.parse(localStorage.getItem('complaints')) || [];
+    displayComplaints(allComplaintsData);
+}
+function displayComplaints(data){
+    if(data.length === 0){ document.getElementById('allComplaints').innerHTML = '<p class="opacity-70">No complaints</p>'; return; }
+    let html = '';
+    data.slice().reverse().forEach(c => {
+        let btn = c.status === 'Pending'? `<button onclick="resolveComplaint(${c.id})" class="bg-green-500 px-3 py-1 rounded text-sm">Mark Resolved</button>` : `<span class="bg-gray-500 px-3 py-1 rounded text-sm">Resolved</span>`;
+        let photoSrc = c.photo || c.image || c.proof || '';
+        let photoHtml = photoSrc? `<div class="mt-3 flex items-center gap-2"><img src="${photoSrc}" class="w-20 h-20 object-cover rounded-lg border-2 border-white/30 cursor-pointer hover:scale-110 transition" onclick="openPhoto('${photoSrc}')"><button onclick="openPhoto('${photoSrc}')" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg text-sm font-bold">🔍 Open Photo</button></div>` : '';
+        html += `<div class="bg-white/10 p-4 rounded-lg"><div class="flex justify-between"><div><p><b>${c.type}</b> - ${c.shop}</p><p class="text-sm opacity-80">${c.aadhar} | ${c.date}</p></div>${btn}</div><p class="mt-2">${c.desc}</p>${photoHtml}</div>`;
+    });
+    document.getElementById('allComplaints').innerHTML = html;
+}
+function resolveComplaint(id){
+    let complaints = JSON.parse(localStorage.getItem('complaints'));
+    let i = complaints.findIndex(c => c.id === id);
+    complaints[i].status = 'Resolved';
+    localStorage.setItem('complaints', JSON.stringify(complaints));
+    loadAllComplaints();
+}
+function filterComplaints(status){
+    if(status === 'All') displayComplaints(allComplaintsData);
+    else displayComplaints(allComplaintsData.filter(c => c.status === status));
+}
+
+function filterByShop(shopId){
+    document.getElementById('shopFilter').value = shopId;
+    document.getElementById('receiptShopFilter').value = shopId;
+    applyFilters();
+    applyReceiptFilter();
+}
+
+function applyFilters(){
+    const term = document.getElementById('searchInput').value.toLowerCase();
+    const shopFilter = document.getElementById('shopFilter').value;
+    const dateFilter = document.getElementById('dateFilter').value;
+    function matchesDate(item){
+        if(!dateFilter) return true;
+        if(item.isoDate && item.isoDate.startsWith(dateFilter)) return true;
+        if(item.date){
+            let d = new Date(dateFilter);
+            if(item.date.includes(d.toLocaleDateString())) return true;
+        }
+        if(item.fullDate){
+            let d = new Date(dateFilter);
+            if(item.fullDate.includes(d.toLocaleDateString())) return true;
+        }
+        return false;
+    }
+    let fReports = allReportsData.filter(r => {
+        let matchTerm =!term || (r.shop.toLowerCase().includes(term) || r.item.toLowerCase().includes(term));
+        let matchShop =!shopFilter || r.shop === shopFilter;
+        return matchTerm && matchShop && matchesDate(r);
+    });
+    displayReports(fReports);
+    let fComplaints = allComplaintsData.filter(c => {
+        let matchTerm =!term || (c.shop.toLowerCase().includes(term) || c.type.toLowerCase().includes(term) || c.aadhar.includes(term));
+        let matchShop =!shopFilter || c.shop === shopFilter;
+        return matchTerm && matchShop && matchesDate(c);
+    });
+    displayComplaints(fComplaints);
+}
+
+function applyReceiptFilter(){
+    const term = document.getElementById('receiptSearch').value.toLowerCase();
+    const shop = document.getElementById('receiptShopFilter').value;
+    const dateVal = document.getElementById('receiptDateFilter').value;
+    let filtered = allCitizenReceipts.filter(r => {
+        let matchTerm =!term || (r.shop && r.shop.toLowerCase().includes(term)) || (r.aadhar && r.aadhar.toString().includes(term));
+        let matchShop =!shop || r.shop === shop;
+        let matchDate = true;
+        if(dateVal){
+            let d = new Date(dateVal).toLocaleDateString();
+            if(r.isoDate) matchDate = r.isoDate.startsWith(dateVal);
+            else if(r.fullDate) matchDate = r.fullDate.includes(d);
+            else if(r.date) matchDate = r.date.includes(d);
+        }
+        return matchTerm && matchShop && matchDate;
+    });
+    displayReceipts(filtered);
+}
+
+function clearFilters(){
+    document.getElementById('searchInput').value = '';
+    document.getElementById('dateFilter').value = '';
+    document.getElementById('shopFilter').value = '';
+    displayReports(allReportsData);
+    displayComplaints(allComplaintsData);
+}
+function clearReceiptFilter(){
+    document.getElementById('receiptSearch').value = '';
+    document.getElementById('receiptShopFilter').value = '';
+    document.getElementById('receiptDateFilter').value = '';
+    displayReceipts(allCitizenReceipts);
+}
+function openPhoto(src){
+    document.getElementById('modalImg').src = src;
+    document.getElementById('photoModal').classList.remove('hidden');
+    document.getElementById('photoModal').classList.add('flex');
+}
+function closePhoto(){
+    document.getElementById('photoModal').classList.add('hidden');
+    document.getElementById('photoModal').classList.remove('flex');
+}
+</script>
+</body>
+</html>

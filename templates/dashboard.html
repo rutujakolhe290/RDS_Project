@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopkeeper Dashboard - RDS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-green-700 to-teal-800 text-white min-h-screen p-6">
+    <div class="max-w-2xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 id="shopTitle" class="text-3xl font-bold">Dashboard</h1>
+                <p id="shopInfo" class="opacity-80 text-sm">Checking login...</p>
+            </div>
+            <a href="/logout" class="bg-red-500 px-4 py-2 rounded-lg font-semibold hover:bg-red-600">Logout</a>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mb-6">
+            <h2 class="text-2xl font-semibold mb-4">📄 Today's Distribution Entry</h2>
+            <label class="block mb-2 font-semibold">Item</label>
+            <select id="distItem" class="w-full p-3 rounded-lg text-black mb-4" onchange="checkQty()">
+                <option value="wheat">Wheat</option>
+                <option value="rice">Rice</option>
+                <option value="sugar">Sugar</option>
+            </select>
+            <label class="block mb-2 font-semibold">Quantity Distributed in Kg</label>
+            <input type="number" id="distQty" placeholder="Enter Kg" class="w-full p-3 rounded-lg text-black mb-4" oninput="checkQty()">
+            <p id="stockMsg" class="text-yellow-300 text-sm mb-2"></p>
+            <button id="submitBtn" onclick="submitDistribution()" class="w-full p-3 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg font-bold text-lg text-black hover:scale-105 transition">
+                Submit Entry to Admin
+            </button>
+            <p id="distMsg" class="text-center mt-2 font-bold"></p>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl">
+            <h2 class="text-2xl font-semibold mb-4">📦 My Current Stock (Live)</h2>
+            <div id="myStock" class="space-y-3 text-lg"></div>
+            <p id="lastUpdate" class="text-xs opacity-60 mt-2"></p>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mt-6">
+            <h2 class="text-2xl font-semibold mb-4">📢 Complaints for My Shop</h2>
+            <div id="shopComplaints" class="space-y-3"></div>
+        </div>
+    </div>
+
+<script>
+let SHOP_ID = '';
+let currentShopData = null;
+
+window.onload = async function(){
+    // --- FIXED AUTH GUARD - Flask Session ---
+    try{
+        let res = await fetch('/api/my-data');
+        let data = await res.json();
+        if(!data.user || data.user.role !== 'shopkeeper'){
+            alert('⚠️ Please login as Shopkeeper from /');
+            window.location.href = '/';
+            return;
+        }
+        SHOP_ID = data.user.shop_id;
+        let aadhar = data.user.mobile;
+        let name = data.user.name;
+
+        let shopNames = {
+            'SHOP001': 'Fair Price Shop - A',
+            'SHOP002': 'Fair Price Shop - B'
+        };
+        document.getElementById('shopTitle').innerText = SHOP_ID + ' Dashboard';
+        document.getElementById('shopInfo').innerText = (shopNames[SHOP_ID] || SHOP_ID) + ' | ' + name + ' | ' + aadhar;
+
+        loadMyStock();
+        loadShopComplaints();
+    } catch(e){
+        window.location.href = '/';
+    }
+}
+
+async function loadMyStock(){
+    let res = await fetch('/api/get-stock');
+    let shops = await res.json();
+    let shop = shops.find(s => s.id === SHOP_ID);
+    currentShopData = shop;
+    if(shop){
+        let alertMsg = '';
+        if(shop.wheat < 20 || shop.rice < 20 || shop.sugar < 10){
+            alertMsg = `<p class="text-red-300 text-sm mb-2">⚠️ Low Stock Alert!</p>`;
+        }
+        document.getElementById('myStock').innerHTML = `
+            ${alertMsg}
+            <div class="flex justify-between bg-white/10 p-3 rounded-lg"><span>🌾 Wheat</span><span><b>${shop.wheat} Kg</b></span></div>
+            <div class="flex justify-between bg-white/10 p-3 rounded-lg"><span>🍚 Rice</span><span><b>${shop.rice} Kg</b></span></div>
+            <div class="flex justify-between bg-white/10 p-3 rounded-lg"><span>🍬 Sugar</span><span><b>${shop.sugar} Kg</b></span></div>
+        `;
+        document.getElementById('lastUpdate').innerText = 'Last Updated: ' + new Date().toLocaleString();
+        checkQty();
+    }
+}
+
+function loadShopComplaints(){
+    let complaints = JSON.parse(localStorage.getItem('complaints')) || [];
+    let myShopComplaints = complaints.filter(c => c.shop === SHOP_ID);
+    if(myShopComplaints.length === 0){
+        document.getElementById('shopComplaints').innerHTML = '<p class="opacity-70">No complaints for your shop ✅</p>';
+        return;
+    }
+    let html = '';
+    myShopComplaints.reverse().forEach(c => {
+        let color = c.status === 'Pending'? 'text-yellow-300' : 'text-green-300';
+        let replyBtn = c.status === 'Pending' && !c.reply? 
+            `<textarea id="reply${c.id}" placeholder="Write reply..." class="w-full p-2 rounded text-black mt-2"></textarea>
+             <button onclick="replyToComplaint(${c.id})" class="bg-blue-500 px-3 py-1 rounded text-sm mt-2">Send Reply</button>`
+            : '';
+        html += `<div class="bg-white/10 p-4 rounded-lg"><div class="flex justify-between"><p><b>${c.type}</b></p><span class="${color} font-bold">${c.status}</span></div><p class="text-sm opacity-80">By: ${c.aadhar} | ${c.date}</p><p class="mt-2">${c.desc}</p>${c.proof ? `<img src="${c.proof}" class="mt-2 w-full max-h-60 rounded-lg border">` : ''}${c.reply? `<p class="mt-2 bg-green-900/30 p-2 rounded">Your Reply: ${c.reply}</p>` : replyBtn}</div>`;
+    });
+    document.getElementById('shopComplaints').innerHTML = html;
+}
+
+function replyToComplaint(id){
+    const replyText = document.getElementById(`reply${id}`).value.trim();
+    if(replyText === ''){ alert('Please write reply'); return; }
+    let complaints = JSON.parse(localStorage.getItem('complaints'));
+    let index = complaints.findIndex(c => c.id === id);
+    complaints[index].reply = replyText;
+    complaints[index].repliedAt = new Date().toLocaleString();
+    localStorage.setItem('complaints', JSON.stringify(complaints));
+    alert('✅ Reply Sent');
+    loadShopComplaints();
+}
+
+function checkQty(){
+    if(!currentShopData) return;
+    const item = document.getElementById('distItem').value.toLowerCase();
+    const qty = parseInt(document.getElementById('distQty').value) || 0;
+    const btn = document.getElementById('submitBtn');
+    const msg = document.getElementById('stockMsg');
+    if(qty > currentShopData[item]){
+        msg.innerText = `❌ Stock kami. Fakt ${currentShopData[item]} Kg available`;
+        btn.disabled = true; btn.classList.add('opacity-50');
+    } else if(qty <= 0){
+        msg.innerText = '';
+        btn.disabled = true; btn.classList.add('opacity-50');
+    } else {
+        msg.innerText = `✅ ${currentShopData[item] - qty} Kg remaining`;
+        btn.disabled = false; btn.classList.remove('opacity-50');
+    }
+}
+
+async function submitDistribution(){
+    const item = document.getElementById('distItem').value.toLowerCase();
+    const qty = parseInt(document.getElementById('distQty').value);
+    if(isNaN(qty) || qty <= 0){ alert('⚠️ Please enter valid quantity'); return; }
+    if(!currentShopData) return;
+
+    if(currentShopData[item] < qty){
+        alert('❌ Not enough stock! Available: ' + currentShopData[item] + ' Kg');
+        // Flag as suspicious
+        let reports = JSON.parse(localStorage.getItem('distributionReports')) || [];
+        reports.push({ date: new Date().toLocaleString(), shop: SHOP_ID, item: item, qty: qty, availableAtTime: currentShopData[item], isSuspicious: true, mismatchNote: `Tried ${qty} but only ${currentShopData[item]} available`, byAadhar: 'SHOPKEEPER' });
+        localStorage.setItem('distributionReports', JSON.stringify(reports));
+        return;
+    }
+
+    // Backend update
+    let payload = { shop_id: SHOP_ID, wheat: currentShopData.wheat, rice: currentShopData.rice, sugar: currentShopData.sugar };
+    payload[item] -= qty;
+    let res = await fetch('/api/update-stock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    let d = await res.json();
+
+    if(d.success){
+        let reports = JSON.parse(localStorage.getItem('distributionReports')) || [];
+        reports.push({ date: new Date().toLocaleString(), shop: SHOP_ID, item: item.charAt(0).toUpperCase()+item.slice(1), qty: qty, availableAtTime: currentShopData[item], isSuspicious: false, byAadhar: 'SHOPKEEPER' });
+        localStorage.setItem('distributionReports', JSON.stringify(reports));
+
+        document.getElementById('distMsg').innerText = `✅ ${qty} Kg ${item} submitted!`;
+        document.getElementById('distQty').value = '';
+        loadMyStock();
+    }
+}
+</script>
+</body>
+</html>

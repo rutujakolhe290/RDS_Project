@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Customer Status & Complaint - RDS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-800 to-cyan-900 text-white min-h-screen p-6">
+    <div class="max-w-2xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold">Customer Portal</h1>
+                <p id="citizenInfo" class="opacity-80 text-sm">Checking login...</p>
+            </div>
+            <a href="/logout" class="bg-red-500 px-4 py-2 rounded-lg">Logout</a>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mb-6">
+            <h2 class="text-2xl font-semibold mb-4">📦 Shop-wise Live Stock</h2>
+            <input type="text" id="shopSearchInput" onkeyup="searchShop()" placeholder="Search Shop e.g. SHOP001" class="w-full p-3 rounded-lg text-black mb-4">
+            <p class="opacity-80 mb-4">Last Updated: <span id="lastUpdate">Live</span></p>
+            <div id="citizenShopStock" class="space-y-4"></div>
+        </div>
+
+        <!-- 2. RECEIPT CONFIRM - FIXED -->
+        <div class="bg-green-900/20 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mb-6 border border-green-500">
+            <h2 class="text-2xl font-semibold mb-4">✅ Confirm Received Stock</h2>
+            
+            <!-- SHOP SELECT ADD KELAY -->
+            <label class="block mb-2 font-semibold text-yellow-300">Which shop did you buy it from? *</label>
+            <select id="receiptShop" class="w-full p-3 rounded-lg text-black mb-3 border-2 border-yellow-400" onchange="showSelectedShopStock()">
+                <option value="">-- Select A Shop --</option>
+            </select>
+            <div id="selectedShopStockInfo" class="bg-black/30 p-3 rounded-lg mb-4 text-sm hidden"></div>
+
+            <div class="grid grid-cols-3 gap-3 mb-3">
+                <div><label class="text-sm">Wheat Kg</label><input type="number" id="recWheat" placeholder="0" class="w-full p-2 rounded text-black"></div>
+                <div><label class="text-sm">Rice Kg</label><input type="number" id="recRice" placeholder="0" class="w-full p-2 rounded text-black"></div>
+                <div><label class="text-sm">Sugar Kg</label><input type="number" id="recSugar" placeholder="0" class="w-full p-2 rounded text-black"></div>
+            </div>
+            <button onclick="submitReceipt()" class="w-full bg-green-500 p-3 rounded-lg font-bold hover:bg-green-600">Submit Receipt for Selected Shop</button>
+            <p id="recMsg" class="text-center mt-3 text-green-300"></p>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl">
+            <h2 class="text-2xl font-semibold mb-4">📢 Submit Complaint</h2>
+            <label class="block mb-2 font-semibold">Select Shop</label>
+            <select id="complaintShop" class="w-full p-3 rounded-lg text-black mb-4"></select>
+            <label class="block mb-2 font-semibold">Complaint Type</label>
+            <select id="complaintType" class="w-full p-3 rounded-lg text-black mb-4">
+                <option>Stock Not Available</option>
+                <option>Extra Money Demanded</option>
+                <option>Poor Quality</option>
+                <option>Shopkeeper Not Present</option>
+                <option>Other</option>
+            </select>
+            <label class="block mb-2 font-semibold">Describe Issue</label>
+            <textarea id="complaintDesc" rows="4" placeholder="Write your complaint..." class="w-full p-3 rounded-lg text-black mb-4"></textarea>
+            <label class="block mb-2 font-semibold">Upload Photo Proof 📸</label>
+            <input type="file" id="complaintProof" accept="image/*" class="w-full p-2 rounded text-black mb-4 bg-white">
+            <button onclick="submitComplaint()" class="w-full p-3 bg-gradient-to-r from-red-400 to-pink-500 rounded-lg font-bold text-lg">Submit Complaint</button>
+            <p id="compMsg" class="text-center mt-3"></p>
+        </div>
+
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mt-6">
+            <h2 class="text-2xl font-semibold mb-4">📝 My Previous Complaints</h2>
+            <div id="myComplaints"></div>
+        </div>
+
+        <!-- MY RECEIPTS SHOW -->
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mt-6">
+            <h2 class="text-2xl font-semibold mb-4">🧾 My Submitted Receipts</h2>
+            <div id="myReceipts"></div>
+        </div>
+    </div>
+
+<script>
+let USER_AADHAR = '';
+let allShops = [];
+
+window.onload = async function(){
+    try{
+        let res = await fetch('/api/my-data');
+        let data = await res.json();
+        if(!data.user){
+            alert('Please login first');
+            window.location.href = '/';
+            return;
+        }
+        USER_AADHAR = data.user.mobile;
+        document.getElementById('citizenInfo').innerText = `${data.user.name} | Citizen`;
+        loadStock();
+        loadMyComplaints();
+        loadMyReceipts();
+    } catch(e){
+        window.location.href = '/';
+    }
+}
+
+async function loadStock(){
+    document.getElementById('lastUpdate').innerText = new Date().toLocaleString();
+    let res = await fetch('/api/get-stock');
+    allShops = await res.json();
+    let options = '';
+    let receiptOptions = '<option value="">-- Shop Nivda --</option>';
+    allShops.forEach(s=>{
+        options+=`<option value="${s.id}">${s.id} - ${s.name}</option>`;
+        receiptOptions+=`<option value="${s.id}">${s.id} - ${s.name}</option>`;
+    });
+    document.getElementById('complaintShop').innerHTML = options;
+    document.getElementById('receiptShop').innerHTML = receiptOptions;
+    displayShops(allShops);
+}
+
+function displayShops(shops){
+    let html = '';
+    shops.forEach(shop => {
+        let border = (shop.wheat < 20 || shop.rice < 20)? 'border-red-500' : 'border-white/10';
+        html += `<div class="bg-white/5 p-4 rounded-lg border-2 ${border}"><h3 class="font-bold text-lg mb-3 text-cyan-300">${shop.id} - ${shop.name}</h3><div class="flex justify-between mb-1"><span>🌾 Wheat</span><span><b>${shop.wheat} Kg</b></span></div><div class="flex justify-between mb-1"><span>🍚 Rice</span><span><b>${shop.rice} Kg</b></span></div><div class="flex justify-between"><span>🍬 Sugar</span><span><b>${shop.sugar} Kg</b></span></div></div>`;
+    });
+    document.getElementById('citizenShopStock').innerHTML = html;
+}
+
+function searchShop(){
+    let term = document.getElementById('shopSearchInput').value.toLowerCase();
+    let filtered = allShops.filter(s => s.id.toLowerCase().includes(term) || s.name.toLowerCase().includes(term));
+    displayShops(filtered);
+}
+
+function showSelectedShopStock(){
+    let shopId = document.getElementById('receiptShop').value;
+    let infoDiv = document.getElementById('selectedShopStockInfo');
+    if(!shopId){
+        infoDiv.classList.add('hidden');
+        return;
+    }
+    let shop = allShops.find(s => s.id === shopId);
+    if(shop){
+        infoDiv.classList.remove('hidden');
+        infoDiv.innerHTML = `📦 <b>${shop.id} - ${shop.name}</b> madhe available: 🌾 Wheat ${shop.wheat} Kg, 🍚 Rice ${shop.rice} Kg, 🍬 Sugar ${shop.sugar} Kg`;
+    }
+}
+
+function submitReceipt(){
+    const shop = document.getElementById('receiptShop').value;
+    const receipt = {
+        date: new Date().toLocaleDateString(),
+        fullDate: new Date().toLocaleString(),
+        aadhar: USER_AADHAR,
+        shop: shop,
+        wheat: parseInt(document.getElementById('recWheat').value) || 0,
+        rice: parseInt(document.getElementById('recRice').value) || 0,
+        sugar: parseInt(document.getElementById('recSugar').value) || 0
+    };
+    if(!shop){ alert('⚠️ Shop nivda! Kontya shop madhun ghetla te sanga'); return; }
+    if(receipt.wheat==0 && receipt.rice==0 && receipt.sugar==0){ alert('Enter at least 1 item'); return; }
+    
+    let receipts = JSON.parse(localStorage.getItem('citizenReceipts')) || [];
+    receipts.push(receipt);
+    localStorage.setItem('citizenReceipts', JSON.stringify(receipts));
+    document.getElementById('recMsg').innerText = `✅ Receipt Submitted for ${shop}!`;
+    document.getElementById('recWheat').value=''; document.getElementById('recRice').value=''; document.getElementById('recSugar').value='';
+    loadMyReceipts();
+}
+
+function submitComplaint(){
+    const shop = document.getElementById('complaintShop').value;
+    const type = document.getElementById('complaintType').value;
+    const desc = document.getElementById('complaintDesc').value.trim();
+    const fileInput = document.getElementById('complaintProof');
+    if(desc === ''){ document.getElementById('compMsg').innerText = '❌ Please write complaint'; return; }
+    if(fileInput.files && fileInput.files[0]){
+        let reader = new FileReader();
+        reader.onload = function(e){ saveComplaint(e.target.result); };
+        reader.readAsDataURL(fileInput.files[0]);
+    } else { saveComplaint(''); }
+    function saveComplaint(proofBase64){
+        let complaints = JSON.parse(localStorage.getItem('complaints')) || [];
+        complaints.push({ id: Date.now(), date: new Date().toLocaleString(), shop: shop, type: type, desc: desc, aadhar: USER_AADHAR, proof: proofBase64, photo: proofBase64, status: 'Pending' });
+        localStorage.setItem('complaints', JSON.stringify(complaints));
+        document.getElementById('compMsg').innerText = '✅ Complaint Submitted!';
+        document.getElementById('complaintDesc').value=''; document.getElementById('complaintProof').value='';
+        loadMyComplaints();
+    }
+}
+
+function loadMyComplaints(){
+    let complaints = JSON.parse(localStorage.getItem('complaints')) || [];
+    let myComp = complaints.filter(c => c.aadhar === USER_AADHAR);
+    if(myComp.length === 0){ document.getElementById('myComplaints').innerHTML = '<p class="opacity-70">No complaints yet</p>'; return; }
+    let html = '';
+    myComp.reverse().forEach(c => {
+        let color = c.status === 'Pending'? 'text-yellow-300' : 'text-green-300';
+        html += `<div class="bg-white/10 p-4 rounded-lg mb-3"><p><b>${c.type}</b> - <span class="${color}">${c.status}</span></p><p class="text-sm opacity-80">${c.shop} | ${c.date}</p><p class="mt-2">${c.desc}</p>${c.proof? `<img src="${c.proof}" class="mt-2 w-full max-h-48 rounded-lg border">` : ''}</div>`;
+    });
+    document.getElementById('myComplaints').innerHTML = html;
+}
+
+function loadMyReceipts(){
+    let receipts = JSON.parse(localStorage.getItem('citizenReceipts')) || [];
+    let myRec = receipts.filter(c => c.aadhar === USER_AADHAR);
+    if(myRec.length === 0){ document.getElementById('myReceipts').innerHTML = '<p class="opacity-70">No receipts yet</p>'; return; }
+    let html = '';
+    myRec.reverse().forEach(r => {
+        html += `<div class="bg-green-900/30 p-3 rounded-lg mb-2 border-l-4 border-green-500"><p><b>${r.shop}</b> | ${r.date}</p><p class="text-sm">Wheat: ${r.wheat}Kg, Rice: ${r.rice}Kg, Sugar: ${r.sugar}Kg</p></div>`;
+    });
+    document.getElementById('myReceipts').innerHTML = html;
+}
+</script>
+</body>
+</html>
