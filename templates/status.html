@@ -22,14 +22,12 @@
             <div id="citizenShopStock" class="space-y-4"></div>
         </div>
 
-        <!-- 2. RECEIPT CONFIRM - FIXED -->
         <div class="bg-green-900/20 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mb-6 border border-green-500">
             <h2 class="text-2xl font-semibold mb-4">✅ Confirm Received Stock</h2>
             
-            <!-- SHOP SELECT ADD KELAY -->
             <label class="block mb-2 font-semibold text-yellow-300">Which shop did you buy it from? *</label>
             <select id="receiptShop" class="w-full p-3 rounded-lg text-black mb-3 border-2 border-yellow-400" onchange="showSelectedShopStock()">
-                <option value="">-- Select A Shop --</option>
+                <option value="">-- Select Shop --</option>
             </select>
             <div id="selectedShopStockInfo" class="bg-black/30 p-3 rounded-lg mb-4 text-sm hidden"></div>
 
@@ -67,7 +65,6 @@
             <div id="myComplaints"></div>
         </div>
 
-        <!-- MY RECEIPTS SHOW -->
         <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl mt-6">
             <h2 class="text-2xl font-semibold mb-4">🧾 My Submitted Receipts</h2>
             <div id="myReceipts"></div>
@@ -102,7 +99,7 @@ async function loadStock(){
     let res = await fetch('/api/get-stock');
     allShops = await res.json();
     let options = '';
-    let receiptOptions = '<option value="">-- Shop Nivda --</option>';
+    let receiptOptions = '<option value="">-- Select Shop --</option>';
     allShops.forEach(s=>{
         options+=`<option value="${s.id}">${s.id} - ${s.name}</option>`;
         receiptOptions+=`<option value="${s.id}">${s.id} - ${s.name}</option>`;
@@ -152,7 +149,7 @@ function submitReceipt(){
         rice: parseInt(document.getElementById('recRice').value) || 0,
         sugar: parseInt(document.getElementById('recSugar').value) || 0
     };
-    if(!shop){ alert('⚠️ Shop nivda! Kontya shop madhun ghetla te sanga'); return; }
+    if(!shop){ alert('⚠️ Please select a shop!'); return; }
     if(receipt.wheat==0 && receipt.rice==0 && receipt.sugar==0){ alert('Enter at least 1 item'); return; }
     
     let receipts = JSON.parse(localStorage.getItem('citizenReceipts')) || [];

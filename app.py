@@ -45,7 +45,7 @@ def dashboard():
 def admin_page():
     if session.get('role')!= 'admin':
         return redirect('/')
-    return render_template('admin.html') # Tujha new wala
+    return render_template('admin.html') 
 
 @app.route('/status')
 def status_page():
@@ -53,7 +53,7 @@ def status_page():
         return redirect('/')
     return render_template('status.html')
 
-# --- AUTH APIs (Tujhe junech) ---
+# --- AUTH APIs  ---
 @app.route('/api/send-otp', methods=['POST'])
 def send_otp():
     data = request.json
