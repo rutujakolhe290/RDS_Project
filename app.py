@@ -5,7 +5,7 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = 'rds_project_secret_2025'
 
-# --- DATABASE (Tujha data) ---
+
 USERS_DB = {
     '111122223333': {'mobile': '9876543210', 'role': 'shopkeeper', 'shop_id': 'SHOP001', 'name': 'Shopkeeper A'},
     '222233334444': {'mobile': '9876543211', 'role': 'shopkeeper', 'shop_id': 'SHOP002', 'name': 'Shopkeeper B'},
@@ -14,7 +14,7 @@ USERS_DB = {
     '444455556666': {'mobile': '9699519897', 'role': 'citizen', 'shop_id': 'SHOP001', 'name': 'Navin'},
 }
 
-# --- PERMANENT LIVE DATA - KADHICH DELETE HONAR NAHI ---
+
 live_data = {
     "stock": [
         {"id": "SHOP001", "name": "Fair Price Shop - A", "wheat": 120, "rice": 85, "sugar": 45},
